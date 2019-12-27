@@ -1,0 +1,6 @@
+Game = GLOBAL('guess_game.Game', 'Game')
+game = GLOBAL('guess_game', 'game')
+game.round_count = 10
+game.win_count = 10
+ticket = INST('guess_game.Ticket', 'Ticket', 6)
+return ticket

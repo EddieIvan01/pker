@@ -1,0 +1,5 @@
+User = GLOBAL('structs', 'User')
+User.__set__ = User
+user = User(0, 0)
+User.privileged = user
+return user

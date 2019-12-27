@@ -1,0 +1,4 @@
+ticket = INST('guess_game.Ticket', 'Ticket', 0)
+game = GLOBAL('guess_game', 'game')
+game.curr_ticket = ticket
+return ticket

