@@ -4,7 +4,6 @@ BUILTIN_MACROS = (
     'GLOBAL',
     'INST',
     'OBJ',
-    'RETURN',
 )
 
 
@@ -285,4 +284,4 @@ root = ast.parse(code)
 
 p = Parser()
 p.visit(root)
-print(''.join(p._pickler.output()).encode())
+print(p._pickler.output().encode())
