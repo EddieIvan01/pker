@@ -39,6 +39,10 @@ def cons_basic_type(v):
         return cons_tpl(v)
     elif isinstance(v, dict):
         return cons_dct(v)
+    elif isinstance(v, ast.Call):
+        return cons_invoke(v)
+    elif isinstance(v, ast.Name):
+        return cons_defined_var(v.id)
     else:
         return v
 
@@ -73,53 +77,35 @@ def cons_tpl(tpl):
 def cons_dct(dct):
     buf = ['(']
     for k, v in dct.items():
-        if isinstance(k, str):
-            buf.append(cons_str(k))
-        elif isinstance(k, (int, float)):
-            buf.append(cons_num(k))
-        elif isinstance(k, tuple):
-            buf.append(cons_tpl(k))
-
+        buf.append(cons_basic_type(k))
         buf.append(cons_basic_type(v))
 
     buf.append('d')
     return ''.join(buf)
 
 
-def cons_item_assign(obj_name, item_k, item_v, lookup_memo):
-    buf = [cons_defined_var(obj_name, lookup_memo)]
-
+def cons_item_assign(obj_name, item_k, item_v):
+    buf = [cons_defined_var(obj_name)]
     buf.append(cons_basic_type(extract_value(item_k)))
-    if isinstance(item_v, ast.Name):
-        buf.append(cons_defined_var(item_v.id, lookup_memo))
-    elif isinstance(item_v, ast.Call):
-        buf.append(cons_invoke(item_v, lookup_memo))
-    else:
-        buf.append(cons_basic_type(extract_value(item_v)))
+    buf.append(cons_basic_type(extract_value(item_v)))
     buf.append('s')
     return ''.join(buf)
 
 
-def cons_defined_var(varname, lookup_memo):
+def cons_defined_var(varname):
     return 'g%d\n' % lookup_memo(varname)
 
 
-def cons_attr_assign(obj_name, attr_k, attr_v, lookup_memo):
-    buf = [cons_defined_var(obj_name, lookup_memo)]
+def cons_attr_assign(obj_name, attr_k, attr_v):
+    buf = [cons_defined_var(obj_name)]
     buf.append('(}(')
     buf.append("S'%s'\n" % attr_k)
-
-    if isinstance(attr_v, ast.Name):
-        buf.append(cons_defined_var(attr_v.id, lookup_memo))
-    elif isinstance(attr_v, ast.Call):
-        buf.append(cons_invoke(attr_v, lookup_memo))
-    else:
-        buf.append(cons_basic_type(extract_value(attr_v)))
+    buf.append(cons_basic_type(extract_value(attr_v)))
     buf.append('dtb')
     return ''.join(buf)
 
 
-def cons_builtin_macros(macro_name, args, lookup_memo):
+def cons_builtin_macros(macro_name, args):
     buf = []
     if macro_name == 'GLOBAL':
         if len(args) != 2:
@@ -156,12 +142,12 @@ def cons_builtin_macros(macro_name, args, lookup_memo):
         buf.append('(')
         callable_obj = args[0]
         if isinstance(callable_obj, ast.Name):
-            buf.append(cons_defined_var(callable_obj.id, lookup_memo))
+            buf.append(cons_defined_var(callable_obj.id))
         elif isinstance(callable_obj, ast.Call):
             buf.append(
                 cons_builtin_macros(
                     callable_obj.func.id,
-                    [extract_value(arg) for arg in callable_obj.args], None))
+                    [extract_value(arg) for arg in callable_obj.args]))
 
         for arg in args[1:]:
             buf.append(cons_basic_type(arg))
@@ -170,33 +156,33 @@ def cons_builtin_macros(macro_name, args, lookup_memo):
     return ''.join(buf)
 
 
-def cons_func(fn_name, args, lookup_memo):
+def cons_func(fn_name, args):
     args = [
-        cons_defined_var(arg.id, lookup_memo)
+        cons_defined_var(arg.id)
         if isinstance(arg, ast.Name) else cons_basic_type(arg) for arg in args
     ]
 
     args = [
         cons_func(arg.func.id, [extract_value(arg_t)
-                                for arg_t in arg.args], lookup_memo)
-        if isinstance(arg, ast.Call) else arg for arg in args
+                                for arg_t in arg.args]) if isinstance(
+                                    arg, ast.Call) else arg for arg in args
     ]
 
-    buf = [cons_defined_var(fn_name, lookup_memo)]
+    buf = [cons_defined_var(fn_name)]
     buf.append('(')
     [buf.append(arg) for arg in args]
     buf.append('tR')
     return ''.join(buf)
 
 
-def cons_invoke(node, lookup_memo):
+def cons_invoke(node):
     fn_name = node.func.id
     args = [extract_value(arg) for arg in node.args]
 
     if fn_name in BUILTIN_MACROS:
-        return cons_builtin_macros(fn_name, args, lookup_memo)
+        return cons_builtin_macros(fn_name, args)
     else:
-        return cons_func(fn_name, args, lookup_memo)
+        return cons_func(fn_name, args)
 
 
 class Pickler(object):
@@ -204,28 +190,18 @@ class Pickler(object):
         self._context = {}
         self._memo_index = 0
         self._output = []
+        globals()['lookup_memo'] = self.lookup_memo
 
     def __setitem__(self, key, value):
         if isinstance(key, ast.Name):
             self._context[key.id] = self._memo_index
-
-            if not isinstance(value, ast.Call):
-                self.push(
-                    cons_basic_type(extract_value(value)) + self.gen_memo())
-
-            elif isinstance(value, ast.Call):
-                self.push(
-                    cons_invoke(value, self.lookup_memo) + self.gen_memo())
+            self.push(cons_basic_type(extract_value(value)) + self.gen_memo())
 
         elif isinstance(key, ast.Subscript):
-            self.push(
-                cons_item_assign(key.value.id, key.slice.value, value,
-                                 self.lookup_memo))
+            self.push(cons_item_assign(key.value.id, key.slice.value, value))
 
         elif isinstance(key, ast.Attribute):
-            self.push(
-                cons_attr_assign(key.value.id, key.attr, value,
-                                 self.lookup_memo))
+            self.push(cons_attr_assign(key.value.id, key.attr, value))
 
         self._memo_index += 1
 
@@ -241,9 +217,6 @@ class Pickler(object):
     def push(self, s):
         self._output.append(s)
 
-    def output(self):
-        return ''.join(self._output)
-
     def terminat(self, obj):
         if obj is not None:
             if isinstance(obj, ast.Name):
@@ -253,7 +226,7 @@ class Pickler(object):
         self.push('.')
 
     def invoke(self, node):
-        self.push(cons_invoke(node, self.lookup_memo))
+        self.push(cons_invoke(node))
 
 
 class Parser(ast.NodeVisitor):
@@ -271,6 +244,9 @@ class Parser(ast.NodeVisitor):
     def visit_Return(self, node):
         self._pickler.terminat(node.value)
 
+    def output(self):
+        return ''.join(self._pickler._output)
+
 
 code = []
 try:
@@ -284,4 +260,4 @@ root = ast.parse(code)
 
 p = Parser()
 p.visit(root)
-print(p._pickler.output().encode())
+print(p.output().encode())
