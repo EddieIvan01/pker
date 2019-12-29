@@ -157,22 +157,32 @@ def cons_builtin_macros(macro_name, args):
 
 
 def cons_func(fn_name, args):
-    args = [cons_basic_type(arg) for arg in args]
     buf = [cons_defined_var(fn_name)]
-    buf.append('(')
+    buf.append(cons_args(args))
+    return ''.join(buf)
+
+
+def cons_args(args):
+    args = [cons_basic_type(arg) for arg in args]
+    buf = ['(']
     [buf.append(arg) for arg in args]
     buf.append('tR')
     return ''.join(buf)
 
 
 def cons_invoke(node):
-    fn_name = node.func.id
     args = [extract_value(arg) for arg in node.args]
 
-    if fn_name in BUILTIN_MACROS:
-        return cons_builtin_macros(fn_name, args)
-    else:
-        return cons_func(fn_name, args)
+    if isinstance(node.func, ast.Name):
+        fn_name = node.func.id
+
+        if fn_name in BUILTIN_MACROS:
+            return cons_builtin_macros(fn_name, args)
+        else:
+            return cons_func(fn_name, args)
+
+    elif isinstance(node.func, ast.Call):
+        return cons_invoke(node.func) + cons_args(args)
 
 
 class Pickler(object):
@@ -184,6 +194,9 @@ class Pickler(object):
 
     def __setitem__(self, key, value):
         if isinstance(key, ast.Name):
+            if key.id in BUILTIN_MACROS:
+                raise Exception('Can\'t assign to built-in macros %s' % key.id)
+
             self._context[key.id] = self._memo_index
             self.push(cons_basic_type(extract_value(value)) + self.gen_memo())
 
