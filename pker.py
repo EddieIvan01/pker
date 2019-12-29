@@ -157,17 +157,7 @@ def cons_builtin_macros(macro_name, args):
 
 
 def cons_func(fn_name, args):
-    args = [
-        cons_defined_var(arg.id)
-        if isinstance(arg, ast.Name) else cons_basic_type(arg) for arg in args
-    ]
-
-    args = [
-        cons_func(arg.func.id, [extract_value(arg_t)
-                                for arg_t in arg.args]) if isinstance(
-                                    arg, ast.Call) else arg for arg in args
-    ]
-
+    args = [cons_basic_type(arg) for arg in args]
     buf = [cons_defined_var(fn_name)]
     buf.append('(')
     [buf.append(arg) for arg in args]
