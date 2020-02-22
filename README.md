@@ -1,6 +1,6 @@
 # pker
 
-Tools for converting Python source code to Pickle opcode automatically
+Tools for converting Python source code to Pickle opcode automatically, see `https://xz.aliyun.com/t/7012`
 
 ## Usage
 
