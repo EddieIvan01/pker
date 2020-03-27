@@ -48,7 +48,7 @@ def cons_basic_type(v):
 
 
 def cons_str(s):
-    return "S'%s'\n" % s
+    return "S'%s'\n" % s.replace('\\', '\\\\').replace("'", "\\'")
 
 
 def cons_num(n):
