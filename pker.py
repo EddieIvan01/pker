@@ -251,16 +251,20 @@ class Parser(ast.NodeVisitor):
         return ''.join(self._pickler._output)
 
 
-code = []
-try:
-    while True:
-        code.append(input() + '\n')
-except EOFError:
-    pass
-code = ''.join(code)
+def cons(c):
+    root = ast.parse(c)
+    p = Parser()
+    p.visit(root)
+    return p.output().encode()
 
-root = ast.parse(code)
 
-p = Parser()
-p.visit(root)
-print(p.output().encode())
+if __name__ == '__main__':
+    code = []
+    try:
+        while True:
+            code.append(input() + '\n')
+    except EOFError:
+        pass
+    code = ''.join(code)
+    print(cons(code))
+
