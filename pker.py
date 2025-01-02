@@ -44,6 +44,8 @@ def cons_basic_type(v):
     elif isinstance(v, ast.Name):
         return cons_defined_var(v.id)
     else:
+        if isinstance(v,ast.Constant) and v.value == None:
+            return 'N'
         return v
 
 
